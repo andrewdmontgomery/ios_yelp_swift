@@ -18,7 +18,12 @@ class FiltersViewController: UIViewController, UITableViewDelegate, UITableViewD
     weak var delegate: FiltersViewControllerDelegate?
     
     var categories: [[String:String]]!
-    var switchStates = [Int:Bool]()
+    var categorySwitchStates = [Int:Bool]()
+    var dealsSwitchState = [Int:Bool]()
+    private var sortChoice = 0
+    private var distanceChoice = 100
+    private var showDistances = false
+    private var showSortOptions = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,6 +33,7 @@ class FiltersViewController: UIViewController, UITableViewDelegate, UITableViewD
         
         tableView.delegate = self
         tableView.dataSource = self
+        
     }
 
     override func didReceiveMemoryWarning() {
@@ -44,38 +50,246 @@ class FiltersViewController: UIViewController, UITableViewDelegate, UITableViewD
         dismissViewControllerAnimated(true, completion: nil)
         var filters =  [String : AnyObject]()
         
+        // Add selected categories to filters
         var selectedCategories = [String]()
-        for (row,isSelected) in switchStates {
+
+        for (row,isSelected) in categorySwitchStates {
             if isSelected {
                 selectedCategories.append(categories[row]["code"]!)
             }
         }
+        
         if selectedCategories.count > 0 {
             filters["categories"] = selectedCategories
         }
+
+        // Add deals to filter
+        for (row,isSelected) in dealsSwitchState {
+            filters["deals"] = isSelected
+        }
+        
+        
+        // Add sort choice to filter
+        filters["sort"] = sortChoice
+        
+        // Add radius to filter
+        filters["radius"] = distanceChoice
         
         delegate?.filtersViewController?(self, didUpdateFilters: filters)
     }
     
+    // MARK: - UITableView
     func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return categories.count
+        switch section {
+        case 0:
+            // Deals
+            return 1;
+        case 1:
+            // Distance
+            if showDistances == true {
+                return 3
+            } else {
+                return 1
+            }
+        case 2:
+            // Sort by
+            if showSortOptions == true {
+                return 3
+            } else {
+                return 1
+            }
+        case 3:
+            // Categories
+            return categories.count;
+        default:
+            // We shouldn't be here
+            return 0;
+        }
+    }
+
+    func tableView(tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        switch section {
+        case 0:
+            // Deals
+            return nil;
+        case 1:
+            // Distance
+            return "Distance";
+        case 2:
+            // Sort by
+            return "Sort by";
+        case 3:
+            // Categories
+            return "Categories";
+        default:
+            // We shouldn't be here
+            return "";
+        }
+
     }
     
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCellWithIdentifier("SwitchCell", forIndexPath: indexPath) as! SwitchCell
         
-        cell.switchLabel.text = categories[indexPath.row]["name"]
-        cell.delegate = self
+        let section = indexPath.section
+        let row = indexPath.row
         
-        cell.onSwitch.on = switchStates[indexPath.row] ?? false
+        switch section {
+        case 0:
+            // Deals
+            cell.switchLabel.text = "Offering a Deal";
+//            cell.delegate = self
+            //cell.onSwitch.on
+        case 1:
+            // Distance
+            //cell.switchLabel.text
+            if showDistances == true {
+                switch row {
+                case 0:
+                    cell.switchLabel.text = "100 m"
+                case 1:
+                    cell.switchLabel.text = "1 km"
+                case 2:
+                    cell.switchLabel.text = "10 km"
+                default:
+                    cell.switchLabel.text = ""
+                }
+                cell.onSwitch.hidden = true
+                if sortChoice == row {
+                    cell.accessoryType = .Checkmark
+                } else {
+                    cell.accessoryType = .None
+                }
+            } else {
+                switch distanceChoice {
+                case 0:
+                    cell.switchLabel.text = "100 m"
+                case 1:
+                    cell.switchLabel.text = "1 km"
+                case 2:
+                    cell.switchLabel.text = "10 km"
+                default:
+                    cell.switchLabel.text = ""
+                }
+                cell.onSwitch.hidden = true
+                cell.accessoryType = .None
+            }
+
+        case 2:
+            // Sort by
+            //return "Sort by";
+            if showSortOptions == true {
+                switch row {
+                case 0:
+                    cell.switchLabel.text = "Best Match"
+                case 1:
+                    cell.switchLabel.text = "Distance"
+                case 2:
+                    cell.switchLabel.text = "Highest Rated"
+                default:
+                    cell.switchLabel.text = ""
+                }
+                cell.onSwitch.hidden = true
+                if sortChoice == row {
+                    cell.accessoryType = .Checkmark
+                } else {
+                    cell.accessoryType = .None
+                }
+            } else {
+                switch sortChoice {
+                case 0:
+                    cell.switchLabel.text = "Best Match"
+                case 1:
+                    cell.switchLabel.text = "Distance"
+                case 2:
+                    cell.switchLabel.text = "Highest Rated"
+                default:
+                    cell.switchLabel.text = ""
+                }
+                cell.onSwitch.hidden = true
+                cell.accessoryType = .None
+            }
+        case 3:
+            // Categories
+            cell.switchLabel.text = categories[indexPath.row]["name"]
+//            cell.delegate = self
+            cell.onSwitch.on = categorySwitchStates[indexPath.row] ?? false
+
+        default:
+            // We shouldn't be here
+            cell.switchLabel.text = categories[indexPath.row]["name"]
+//            cell.delegate = self
+            cell.onSwitch.on = categorySwitchStates[indexPath.row] ?? false
+
+        }
+
+        cell.delegate = self
         
         return cell
     }
     
+    func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
+        let section = indexPath.section
+        let row = indexPath.row
+        
+        tableView.deselectRowAtIndexPath(indexPath, animated: true)
+        
+        if section == 1 {
+            if showDistances == false {
+                showDistances = true
+            } else {
+                // We should probably our enum here, but it's getting late
+                switch row {
+                case 0:
+                    distanceChoice = 100
+                case 1:
+                    distanceChoice = 1000
+                case 2:
+                    distanceChoice = 10000
+                default:
+                    distanceChoice = 10000
+                }
+                showDistances = false
+            }
+            let indexSet = NSIndexSet(index: section)
+            tableView.reloadSections(indexSet, withRowAnimation: UITableViewRowAnimation.Automatic)
+        } else if section == 2 {
+            if showSortOptions == false {
+                showSortOptions = true
+            } else {
+                sortChoice = row
+                showSortOptions = false
+            }
+            let indexSet = NSIndexSet(index: section)
+            tableView.reloadSections(indexSet, withRowAnimation: UITableViewRowAnimation.Automatic)
+        }
+    }
+    
+    func numberOfSectionsInTableView(tableView: UITableView) -> Int {
+        return 4
+    }
+    
     func switchCell(switchCell: SwitchCell, didChangeValue value: Bool) {
         let indexPath = tableView.indexPathForCell(switchCell)!
+        let section = indexPath.section
         
-        switchStates[indexPath.row] = value
+        switch section {
+        case 0:
+            // Deals
+            dealsSwitchState[indexPath.row] = value
+        case 1:
+            // Distance
+            println("case 1")
+        case 2:
+            // Sort by
+            println("case 2")
+        case 3:
+            // Categories
+            categorySwitchStates[indexPath.row] = value
+        default:
+            categorySwitchStates[indexPath.row] = value
+        }
+        
         println("filters view controller got the switch event")
     }
     

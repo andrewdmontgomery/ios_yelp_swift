@@ -18,6 +18,12 @@ enum YelpSortMode: Int {
     case BestMatched = 0, Distance, HighestRated
 }
 
+//enum YelpRadius: Int {
+//    case OneHundredMeters = 100
+//    case OneKilometer = 1000
+//    case TenKilometers = 10000
+//}
+
 class YelpClient: BDBOAuth1RequestOperationManager {
     var accessToken: String!
     var accessSecret: String!
@@ -81,4 +87,39 @@ class YelpClient: BDBOAuth1RequestOperationManager {
                 completion(nil, error)
         })
     }
+
+    func searchWithTerm(term: String, sort: YelpSortMode?, categories: [String]?, deals: Bool?, radius: Int?, completion: ([Business]!, NSError!) -> Void) -> AFHTTPRequestOperation {
+        // For additional parameters, see http://www.yelp.com/developers/documentation/v2/search_api
+        
+        // Default the location to San Francisco
+        var parameters: [String : AnyObject] = ["term": term, "ll": "37.785771,-122.406165"]
+        
+        if sort != nil {
+            parameters["sort"] = sort!.rawValue
+        }
+        
+        if categories != nil && categories!.count > 0 {
+            parameters["category_filter"] = ",".join(categories!)
+        }
+        
+        if deals != nil {
+            parameters["deals_filter"] = deals!
+        }
+        
+        if radius != nil {
+            parameters["radius_filter"] = radius!
+        }
+        
+        println(parameters)
+        
+        return self.GET("search", parameters: parameters, success: { (operation: AFHTTPRequestOperation!, response: AnyObject!) -> Void in
+            var dictionaries = response["businesses"] as? [NSDictionary]
+            if dictionaries != nil {
+                completion(Business.businesses(array: dictionaries!), nil)
+            }
+            }, failure: { (operation: AFHTTPRequestOperation!, error: NSError!) -> Void in
+                completion(nil, error)
+        })
+    }
+
 }
